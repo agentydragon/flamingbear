@@ -26,7 +26,7 @@ START=$(( $END - 24 * 60 * 60 ))
 : ${HOST:="localhost"}
 : ${HOST_NAME:=$HOST}
 
-: ${GRAPH_DIR:=data/graph}
+: ${GRAPH_DIR:=graphs}
 #####################
 
 function die() {
@@ -56,7 +56,7 @@ function find_modules() {
 }
 
 function load_machine() {
-	MACHINE="$1"
+	MACHINE=$(echo "$1" | sed -e 's/^ *//' -e 's/ *$//')
 	(echo "$MACHINES" | grep -- "$MACHINE" > /dev/null) || die "No such machine known: $MACHINE"
 	source "etc/machines/${MACHINE}.conf"
 	debug "Machine $MACHINE loaded."
@@ -71,11 +71,21 @@ function load_module() {
 
 function collect_machine_data() {
 	lock_machine
-	for module in "$USE_MODULES"; do
+	PIDS=""
+	for module in $USE_MODULES; do
 		debug "Collecting data with module ${module}."
 		load_module "$module"
-		collect_module_data
+		collect_module_data &
+		PID=$!
+		PIDS="$PIDS $PID"
+		debug "Background module PID: $PID"
 	done
+
+	for PID in $PIDS; do
+		debug "Waiting for module PID $PID"
+		wait $PID
+	done
+
 	unlock_machine
 }
 
@@ -83,7 +93,7 @@ function prepare_machine() {
 	MACHINE_DIR="$RRD_DIR/$MACHINE"
 	mkdir -p "$MACHINE_DIR" || die "Failed to create machine directory $MACHINE_DIR"
 	# TODO: parametry za dvojteckou jdou modulu
-	for module in "$USE_MODULES"; do
+	for module in $USE_MODULES; do
 		debug "Preparing module ${module}."
 		load_module "$module"
 		prepare_module_data
@@ -117,6 +127,7 @@ function ensure_lock_directory() {
 
 function lock_machine() {
 	ensure_lock_directory
+	debug "Locking machine $MACHINE"
 	LOCK_FILE="$LOCK_DIR/$MACHINE"
 	MAX_ATTEMPTS=10
 	ATTEMPTS="$MAX_ATTEMPTS"
@@ -127,13 +138,19 @@ function lock_machine() {
 		fi
 		ATTEMPTS=$(($ATTEMPTS - 1))
 		sleep 2 
+		debug "$MACHINE still locked, trying again."
 	done
 
 	touch "$LOCK_FILE" || die "Failed to create lock file for $MACHINE"
 }
 
 function unlock_machine() {
+	debug "Unlocking machine $MACHINE"
 	LOCK_FILE="$LOCK_DIR/$MACHINE"
 	[ -f "$LOCK_FILE" ] || die "Unlocking an unlocked machine ($MACHINE)"
 	rm "$LOCK_FILE" || die "Failed to unlock machine $MACHINE"
+}
+
+function ensure_graph_directory() {
+	mkdir -p "$GRAPH_DIR/$MACHINE" || die "Failed to create graph directory for $MACHINE"
 }
