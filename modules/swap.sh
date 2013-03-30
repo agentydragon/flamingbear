@@ -17,7 +17,7 @@ function update() {
 
 function plot() {
 	plot_rrd \
-		--title "Swap usage" \
+		--title "Swap usage ($MACHINE)" \
 		COMMENT:"Swap usage in last 24 hour\\c" \
 		COMMENT:" \n" \
 		--vertical-label='bytes' \

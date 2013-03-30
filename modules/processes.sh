@@ -20,7 +20,7 @@ function update() {
 
 function plot() {
 	plot_rrd \
-		--title "Processes" \
+		--title "Processes ($MACHINE)" \
 		COMMENT:"Number of processes in last 24 hour\\c" \
 		COMMENT:" \n" \
 		--vertical-label='processes' \

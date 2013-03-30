@@ -30,6 +30,13 @@ function process_machine() {
 
 source lib/boot.sh
 
+case $1 in
+--help|-h)
+	echo "Usage: $0 [MACHINE [MODULE [OUTPUT_FILE]]]"
+	echo "By default, all modules activated on all machines plot their graphs to the default location ($GRAPH_DIR)."
+	exit 0
+esac
+
 if [ $# -ge 1 ]; then
 	process_machine "$1" "$2" "$3"
 else

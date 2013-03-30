@@ -26,7 +26,7 @@ function update() {
 
 function plot() {
 	plot_rrd \
-		--title "Memory usage" \
+		--title "Memory usage ($MACHINE)" \
 		COMMENT:"Memory usage in last 24 hour\\c" \
 		COMMENT:"   \n" \
 		--vertical-label='bytes' \

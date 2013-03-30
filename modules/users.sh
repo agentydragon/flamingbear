@@ -14,7 +14,7 @@ function update() {
 
 function plot() {
 	plot_rrd \
-		--title "Logged in Users" \
+		--title "Logged in Users ($MACHINE)" \
 		COMMENT:"Number of logged in users in last 24 hour\\c" \
 		COMMENT:" \n" \
 		--vertical-label='logged in users' \

@@ -15,7 +15,7 @@ function update() {
 
 function plot() {
 	plot_rrd \
-		--title "Load Average" \
+		--title "Load Average ($MACHINE)" \
 		COMMENT:"Load average in last 24 hour\\c" \
 		COMMENT:"   \n" \
 		--vertical-label='number of processes in the run queue' \

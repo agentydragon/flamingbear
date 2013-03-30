@@ -2,8 +2,20 @@
 
 source lib/boot.sh
 
+case $1 in
+--help|-h)
+	echo "Usage: $0 [MACHINE1 MACHINE2 ...]"
+	echo "Collects data from all machines by default."
+	exit 0
+esac
+
+BOXES="$@"
+if [ "z" == "${BOXES}z" ]; then
+	BOXES="$MACHINES"
+fi
+
 PIDS=""
-for BOX in $MACHINES; do
+for BOX in $BOXES; do
 	load_machine "$BOX"
 	collect_machine_data &
 	PID=$!
@@ -24,7 +36,3 @@ done
 if [ $FAULTS -ne 0 ]; then
 	die "Failed to collect data from $FAULTS machine(s)."
 fi
-
-# Usage:
-#   no args: collect from all machines
-#   some args: collect from those machines

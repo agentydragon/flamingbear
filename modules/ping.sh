@@ -18,7 +18,7 @@ function update() {
 
 function plot() {
 	plot_rrd \
-		--title "Ping in milliseconds" \
+		--title "Ping ($MACHINE)" \
 		--vertical-label="ping in milliseconds" \
 		DEF:Ping=$RRD:Ping:AVERAGE \
 		AREA:Ping$C_RED:Ping:STACK \
