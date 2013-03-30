@@ -47,7 +47,6 @@ function cut_directory_and_extension() {
 }
 
 function find_machines() {
-	# TODO: factor "filename cut" outside
 	MACHINES=$(find etc/machines/ -name "*.conf" -type f |
 	while read filename
 	do
