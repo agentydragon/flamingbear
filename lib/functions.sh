@@ -26,7 +26,7 @@ START=$(( $END - 24 * 60 * 60 ))
 #####################
 
 function log() {
-	echo "$(date +%Y%m%d\ %H:%M) $@" >> $LOG_FILE
+	echo "$(date +%Y-%m-%d\ %H:%M) $@" >> $LOG_FILE
 }
 
 function error() {
@@ -127,17 +127,27 @@ function find_rrd_path() {
 
 function prepare_module_data() {
 	find_rrd_path
+	if [ -f "$RRD" ]; then
+		if [ -z "$FORCE_REMOVE_RRDS" ]; then
+			die "RRD file $RRD already exists. Run with -f to force removal."
+		else
+			debug "Removing ${RRD}."
+			rm -f "$RRD"
+		fi
+	fi
 	create
 }
 
 function collect_module_data() {
 	find_rrd_path
+	[ -f "$RRD" ] || die "RRD file for module $MODULE on $MACHINE ($RRD) doesn't exist. Please, run prepare.sh first."
 	update
 	rrdtool update "$RRD" "$(date +%s):$DATA"
 }
 
 function plot_module_data() {
 	find_rrd_path
+	[ -f "$RRD" ] || die "RRD file for module $MODULE on $MACHINE ($RRD) doesn't exist. Please, run prepare.sh first."
 	GRAPH="$1"
 	plot
 }
