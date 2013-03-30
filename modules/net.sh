@@ -1,43 +1,28 @@
 #!/bin/sh
 
-if endswith "$MODULE_NAME" "\\..*"; then
-	IF=`echo "$MODULE_NAME" | sed -e 's/.*[.]\(.*\)/\1/'`
-else
-	IF="eth0"
+IF="eth0"
+if [ -n "$MODULE_ARGS" ]; then
+	IF="$MODULE_ARGS"
 fi
 
-# Create new RRD file in $1
+# Create new RRD file
 function create() {
-	RRD=$1
-	rrdtool create "$RRD" --step $STEP \
-		DS:TotalIn:COUNTER:$UN:0:U \
+	create_rrd DS:TotalIn:COUNTER:$UN:0:U \
 		DS:TotalOut:COUNTER:$UN:0:U \
-		RRA:AVERAGE:0.5:1:$KEEP \
-		|| die "Could not create RRD."
-
+		RRA:AVERAGE:0.5:1:$KEEP
 }
 
-# Update RRD file in $1
+# Update RRD file
 function update() {
-	RRD=$1
-	
-	rrdtool update "$RRD" \
-	`cat /proc/net/dev | awk '/^ *'$IF':/ { printf "%i:%i:%i", '$DATE', $2, $10 }'`
+	run_on_server "cat /proc/net/dev | awk '/^ *'$IF':/ { printf \"%i:%i\", \$2, \$10 }'"
 }
 
-# Plot a new graph from $1 to $2, where $2 may be a prefix when multiple 
-# graphs are plotted.
 function plot() {
-	RRD=$1
-	GRAPH=$2
-	
-	rrdtool graph $GRAPH --lower-limit 0 \
-		$GEOMETRY $STYLE \
+	plot_rrd \
 		--title "Traffic - $IF" \
 		COMMENT:"Traffic on $IF in last 24 hour\\c" \
 		COMMENT:" \n" \
 		--vertical-label='bytes/s' \
-		--start=$START --end=$END \
 		--base 1000 \
 		DEF:TotalIn=$RRD:TotalIn:AVERAGE \
 		DEF:TotalOut=$RRD:TotalOut:AVERAGE \
@@ -50,6 +35,5 @@ function plot() {
 		GPRINT:TotalOut:LAST:"  Current\:%8.2lf %s" \
 		GPRINT:TotalOut:MIN:"Minimum\:%8.2lf %s"  \
 		GPRINT:TotalOut:AVERAGE:"Average\:%8.2lf %s"  \
-		GPRINT:TotalOut:MAX:"Maximum\:%8.2lf %s\n" \
-			> /dev/null
+		GPRINT:TotalOut:MAX:"Maximum\:%8.2lf %s\n"
 }

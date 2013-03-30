@@ -1,8 +1,5 @@
 #!/bin/sh
 
-MACHINES=""
-MODULES=""
-
 #####################
 WEEK=$(( 7 * 24 * 60 * 60 ))
 END=$(date +%s)
@@ -74,7 +71,10 @@ function load_machine() {
 }
 
 function load_module() {
-	MODULE="$1"
+	MODULE_COMMANDLINE="$1"
+	SANITIZED_MODULE_COMMANDLINE=$(echo "$1" | tr : _)
+	MODULE="$(echo -n "$MODULE_COMMANDLINE" | cut -d: -f1)"
+	MODULE_ARGS="$(echo -n "$MODULE_COMMANDLINE" | cut -d: -f2-)"
 	(echo "$MODULES" | grep -- "$MODULE" > /dev/null) || die "No such module known: $MODULE"
 	source "modules/${MODULE}.sh"
 	debug "Module $MODULE loaded."
@@ -113,7 +113,6 @@ function collect_machine_data() {
 function prepare_machine() {
 	MACHINE_DIR="$RRD_DIR/$MACHINE"
 	mkdir -p "$MACHINE_DIR" || die "Failed to create machine directory $MACHINE_DIR"
-	# TODO: parametry za dvojteckou jdou modulu
 	for module in $USE_MODULES; do
 		debug "Preparing module ${module}."
 		load_module "$module"
@@ -122,7 +121,7 @@ function prepare_machine() {
 }
 
 function find_rrd_path() {
-	RRD="$RRD_DIR/$MACHINE/${MODULE}.rrd"
+	RRD="$RRD_DIR/$MACHINE/${SANITIZED_MODULE_COMMANDLINE}.rrd"
 }
 
 function prepare_module_data() {
@@ -158,21 +157,29 @@ function ensure_lock_directory() {
 
 function lock_machine() {
 	ensure_lock_directory
-	debug "Locking machine $MACHINE"
+	debug "Locking machine $MACHINE as $MAIN_PID"
 	local LOCK_FILE="$LOCK_DIR/$MACHINE"
 	local MAX_ATTEMPTS=10
 	local ATTEMPTS="$MAX_ATTEMPTS"
 
 	while [ -f "$LOCK_FILE" ]; do
+		local OWNER_PID=$(cat "$LOCK_FILE")
+
+		if [ $(ps -e -o pid | grep -e "^ *$OWNER_PID$" | wc -l) -eq 0 ]; then
+			debug "Lock owner $OWNER_PID is no longer running. Ripping the lock from his cold, dead arms."
+			break
+		fi
+
 		if [ "$ATTEMPTS" -lt 1 ]; then
 			die "Failed to lock machine $MACHINE after $MAX_ATTEMPTS attempts"
 		fi
+
 		ATTEMPTS=$(($ATTEMPTS - 1))
 		sleep 2 
 		debug "$MACHINE still locked, trying again."
 	done
 
-	touch "$LOCK_FILE" || die "Failed to create lock file for $MACHINE"
+	echo $MAIN_PID > "$LOCK_FILE" || die "Failed to create lock file for $MACHINE"
 }
 
 function unlock_machine() {

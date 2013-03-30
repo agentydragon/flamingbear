@@ -9,7 +9,7 @@ function do_plot() {
 		file="$2"
 	else
 		ensure_graph_directory
-		file="$GRAPH_DIR/$MACHINE/$module-$(date +%Y%m%d-%H%M).png"
+		file="$GRAPH_DIR/$MACHINE/$SANITIZED_MODULE_COMMANDLINE-$(date +%Y%m%d-%H%M).png"
 	fi
 
 	debug "Plotting into $file"

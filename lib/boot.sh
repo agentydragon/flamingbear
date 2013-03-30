@@ -10,3 +10,5 @@ find_modules
 
 [ -n "$MACHINES" ] || die "No machines defined."
 [ -n "$MODULES" ] || die "No modules defined."
+
+MAIN_PID=$$
