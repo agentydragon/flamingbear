@@ -4,9 +4,8 @@ MACHINES=""
 MODULES=""
 
 #####################
-DATE=`date +%s`
 WEEK=$(( 7 * 24 * 60 * 60 ))
-END=$DATE
+END=$(date +%s)
 START=$(( $END - 24 * 60 * 60 ))
 #START=$(( $END - 10 * 60 ))
 
@@ -23,14 +22,21 @@ START=$(( $END - 24 * 60 * 60 ))
 : ${FONTS:="--font TITLE:12: --font AXIS:8:	--font LEGEND:10: --font UNIT:8:"}
 : ${STYLE:="$FONTS --slope-mode"}
 
-: ${HOST:="localhost"}
-: ${HOST_NAME:=$HOST}
-
 : ${GRAPH_DIR:=graphs}
 #####################
 
-function die() {
+function log() {
+	echo "$(date +%Y%m%d\ %H:%M) $@" >> $LOG_FILE
+}
+
+function error() {
+	log Error: $@
 	echo "==> $@"
+}
+
+function die() {
+	error $@
+	log Exiting.
 	echo "==> Exiting."
 	exit 1
 }
@@ -39,11 +45,16 @@ function debug() {
 	echo "--> $@"
 }
 
+function cut_directory_and_extension() {
+	echo -n "$1" | rev | cut -d. -f2- | cut -d/ -f1 | rev
+}
+
 function find_machines() {
+	# TODO: factor "filename cut" outside
 	MACHINES=$(find etc/machines/ -name "*.conf" -type f |
 	while read filename
 	do
-		echo -n "$(echo -n "$filename" | rev | cut -d. -f2- | cut -d/ -f1 | rev) "
+		echo -n "$(cut_directory_and_extension "$filename") "
 	done)
 }
 
@@ -51,7 +62,7 @@ function find_modules() {
 	MODULES=$(find modules/ -name "*.sh" -type f |
 	while read filename
 	do
-		echo -n "$(echo -n "$filename" | rev | cut -d. -f2- | cut -d/ -f1 | rev) "
+		echo -n "$(cut_directory_and_extension "$filename") "
 	done)
 }
 
@@ -70,10 +81,12 @@ function load_module() {
 }
 
 function collect_machine_data() {
+	log "Collecting data from $MACHINE."
+
 	lock_machine
 	PIDS=""
 	for module in $USE_MODULES; do
-		debug "Collecting data with module ${module}."
+		debug "Collecting data with module ${module} on $MACHINE."
 		load_module "$module"
 		collect_module_data &
 		PID=$!
@@ -81,12 +94,20 @@ function collect_machine_data() {
 		debug "Background module PID: $PID"
 	done
 
+	FAULTS=0
 	for PID in $PIDS; do
 		debug "Waiting for module PID $PID"
 		wait $PID
+		if [ $? -ne 0 ]; then
+			FAULTS=$(($FAULTS+1))
+			error "Module failed to collect data."
+		fi
 	done
-
 	unlock_machine
+
+	if [ $FAULTS -ne 0 ]; then
+		die "Failed to collect data from $FAULTS module(s) on $MACHINE."
+	fi
 }
 
 function prepare_machine() {
@@ -106,19 +127,19 @@ function find_rrd_path() {
 
 function prepare_module_data() {
 	find_rrd_path
-	create "$RRD"
+	create
 }
 
 function collect_module_data() {
 	find_rrd_path
-	DATE=$(date +%s)
-	update "$RRD"
+	update
+	rrdtool update "$RRD" "$(date +%s):$DATA"
 }
 
 function plot_module_data() {
-	FILE="$1"
 	find_rrd_path
-	plot "$RRD" "$FILE"
+	GRAPH="$1"
+	plot
 }
 
 function ensure_lock_directory() {
@@ -128,9 +149,9 @@ function ensure_lock_directory() {
 function lock_machine() {
 	ensure_lock_directory
 	debug "Locking machine $MACHINE"
-	LOCK_FILE="$LOCK_DIR/$MACHINE"
-	MAX_ATTEMPTS=10
-	ATTEMPTS="$MAX_ATTEMPTS"
+	local LOCK_FILE="$LOCK_DIR/$MACHINE"
+	local MAX_ATTEMPTS=10
+	local ATTEMPTS="$MAX_ATTEMPTS"
 
 	while [ -f "$LOCK_FILE" ]; do
 		if [ "$ATTEMPTS" -lt 1 ]; then
@@ -146,7 +167,7 @@ function lock_machine() {
 
 function unlock_machine() {
 	debug "Unlocking machine $MACHINE"
-	LOCK_FILE="$LOCK_DIR/$MACHINE"
+	local LOCK_FILE="$LOCK_DIR/$MACHINE"
 	[ -f "$LOCK_FILE" ] || die "Unlocking an unlocked machine ($MACHINE)"
 	rm "$LOCK_FILE" || die "Failed to unlock machine $MACHINE"
 }
