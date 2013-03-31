@@ -1,6 +1,6 @@
 #!/bin/sh
 
-source etc/watchman.conf
+source etc/flamingbear.conf
 source lib/functions.sh
 source lib/colors.sh
 source lib/module_helpers.sh
@@ -33,4 +33,4 @@ START=$(( $END - 24 * 60 * 60 ))
 : ${RRD_DIR:=rrd}
 : ${LOCK_DIR:=locks}
 : ${GRAPH_DIR:=graphs}
-: ${LOG_FILE:=watchman.log}
+: ${LOG_FILE:=flamingbear.log}
