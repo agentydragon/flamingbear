@@ -34,3 +34,5 @@ START=$(( $END - 24 * 60 * 60 ))
 : ${LOCK_DIR:=locks}
 : ${GRAPH_DIR:=graphs}
 : ${LOG_FILE:=flamingbear.log}
+
+: ${SSH_ARGS:="-o PasswordAuthentication=no"}

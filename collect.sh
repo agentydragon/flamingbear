@@ -16,8 +16,7 @@ fi
 
 PIDS=""
 for BOX in $BOXES; do
-	load_machine "$BOX"
-	collect_machine_data &
+	collect_machine_data "$BOX" &
 	PID=$!
 	PIDS="$PIDS $PID"
 	debug "Background machine PID: $PID"

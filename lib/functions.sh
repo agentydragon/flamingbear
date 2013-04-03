@@ -58,43 +58,56 @@ function load_module() {
 }
 
 function collect_machine_data() {
-	log "Collecting data from $MACHINE."
+	# Run in a subshell so that machine settings don't persist.
+	(
+		MACHINE="$1"
+		log "Collecting data from $MACHINE."
 
-	lock_machine
-	PIDS=""
-	for module in $USE_MODULES; do
-		debug "Collecting data with module ${module} on $MACHINE."
-		load_module "$module"
-		collect_module_data &
-		PID=$!
-		PIDS="$PIDS $PID"
-		debug "Background module PID: $PID"
-	done
+		lock_machine
 
-	FAULTS=0
-	for PID in $PIDS; do
-		debug "Waiting for module PID $PID"
-		wait $PID
-		if [ $? -ne 0 ]; then
-			FAULTS=$(($FAULTS+1))
-			error "Module failed to collect data."
+		load_machine "$MACHINE"
+
+		PIDS=""
+		for module in $USE_MODULES; do
+			debug "Collecting data with module ${module} on $MACHINE."
+			load_module "$module"
+			collect_module_data &
+			PID=$!
+			PIDS="$PIDS $PID"
+			debug "Background module PID: $PID"
+		done
+
+		FAULTS=0
+		for PID in $PIDS; do
+			debug "Waiting for module PID $PID"
+			wait $PID
+			if [ $? -ne 0 ]; then
+				FAULTS=$(($FAULTS+1))
+				error "Module failed to collect data."
+			fi
+		done
+		unlock_machine
+
+		if [ $FAULTS -ne 0 ]; then
+			die "Failed to collect data from $FAULTS module(s) on $MACHINE."
 		fi
-	done
-	unlock_machine
-
-	if [ $FAULTS -ne 0 ]; then
-		die "Failed to collect data from $FAULTS module(s) on $MACHINE."
-	fi
+	)
 }
 
 function prepare_machine() {
-	MACHINE_DIR="$RRD_DIR/$MACHINE"
-	mkdir -p "$MACHINE_DIR" || die "Failed to create machine directory $MACHINE_DIR"
-	for module in $USE_MODULES; do
-		debug "Preparing module ${module}."
-		load_module "$module"
-		prepare_module_data
-	done
+	# Run in a subshell so that machine settings don't persist.
+	(
+		MACHINE="$1"
+		load_machine "$MACHINE"
+
+		MACHINE_DIR="$RRD_DIR/$MACHINE"
+		mkdir -p "$MACHINE_DIR" || die "Failed to create machine directory $MACHINE_DIR"
+		for module in $USE_MODULES; do
+			debug "Preparing module ${module}."
+			load_module "$module"
+			prepare_module_data
+		done
+	)
 }
 
 function find_rrd_path() {

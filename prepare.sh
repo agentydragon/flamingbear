@@ -21,6 +21,5 @@ if [ "z" == "${BOXES}z" ]; then
 fi
 
 for machine in $BOXES; do
-	load_machine "$machine"
-	prepare_machine
+	prepare_machine "$machine"
 done

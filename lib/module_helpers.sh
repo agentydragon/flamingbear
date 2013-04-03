@@ -1,14 +1,24 @@
 #!/bin/sh
 # Module helpers
 
-# Runs $@ on server and saves into $OUTPUT.
+# Runs $@ on the tested machine and saves into $OUTPUT.
 function run_on_server() {
-	local TARGET="$HOSTNAME"
-	if [ -z $USER ]; then
-		TARGET="$USER@$TARGET"
+	COMMAND="$@"
+	if [ -z $LOCAL ]; then
+		local TARGET="$HOSTNAME"
+		if [ -n $USER ]; then
+			TARGET="$USER@$TARGET"
+		fi
+
+		DATA=$(ssh "$TARGET" $COMMAND)
+		RESULT=$?
+		[ $RESULT -eq 0 ] || die "Remote command failed: $@"
+	else
+		DATA=$(sh -c "$COMMAND")
+		RESULT=$?
+		[ $RESULT -eq 0 ] || die "Local command failed: $COMMAND"
 	fi
-	DATA=$(ssh "$TARGET" $@)
-	[ $? -eq 0 ] || die "Remote command failed: $@"
+	return $RESULT
 }
 
 function create_rrd() {
