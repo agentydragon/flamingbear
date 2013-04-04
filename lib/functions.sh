@@ -145,6 +145,24 @@ function ensure_lock_directory() {
 	mkdir -p "$LOCK_DIR" || die "Failed to create lock directory $LOCK_DIR"
 }
 
+function try_lock_machine() {
+	local LOCK_FILE="$LOCK_DIR/$MACHINE"
+
+	if [ -f "$LOCK_FILE" ]; then
+		local OWNER_PID=$(cat "$LOCK_FILE")
+
+		if [ $(ps -e -o pid | grep -e "^ *$OWNER_PID$" | wc -l) -gt 0 ]; then
+			debug "Lock owner $OWNER_PID is still running..."
+			return 1
+		fi
+	fi
+
+	flock -n "$LOCK_FILE" -c "echo $MAIN_PID > \"$LOCK_FILE\"" && return 0
+
+	debug "Failed to lock $MACHINE."
+	return 1
+}
+
 function lock_machine() {
 	ensure_lock_directory
 	debug "Locking machine $MACHINE as $MAIN_PID"
@@ -152,24 +170,19 @@ function lock_machine() {
 	local MAX_ATTEMPTS=10
 	local ATTEMPTS="$MAX_ATTEMPTS"
 
-	while [ -f "$LOCK_FILE" ]; do
-		local OWNER_PID=$(cat "$LOCK_FILE")
-
-		if [ $(ps -e -o pid | grep -e "^ *$OWNER_PID$" | wc -l) -eq 0 ]; then
-			debug "Lock owner $OWNER_PID is no longer running. Ripping the lock from his cold, dead arms."
-			break
-		fi
-
-		if [ "$ATTEMPTS" -lt 1 ]; then
-			die "Failed to lock machine $MACHINE after $MAX_ATTEMPTS attempts"
+	while [ "$ATTEMPTS" -gt 0 ]; do
+		if try_lock_machine; then
+			debug "$MACHINE lock obtained."
+			sleep 4
+			return
 		fi
 
 		ATTEMPTS=$(($ATTEMPTS - 1))
-		sleep 2 
-		debug "$MACHINE still locked, trying again."
+		debug "$MACHINE still locked, trying again in 2 seconds."
+		sleep 2
 	done
 
-	echo $MAIN_PID > "$LOCK_FILE" || die "Failed to create lock file for $MACHINE"
+	die "Failed to lock $MACHINE after $MAX_ATTEMPTS attempts."
 }
 
 function unlock_machine() {
