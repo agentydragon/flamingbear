@@ -1,0 +1,3 @@
+HOSTNAME="rny.cz"
+USER="git"
+USE_MODULES="ping mem load processes swap users"

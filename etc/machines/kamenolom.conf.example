@@ -1,0 +1,2 @@
+HOSTNAME="kamenolom.kam.mff.cuni.cz"
+USE_MODULES="ping load net:eth0 net:eth3 net:lo"
