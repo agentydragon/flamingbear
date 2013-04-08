@@ -1,5 +1,10 @@
 #!/bin/sh
 
+THRESHOLD="1.5"
+if [ -n "$MODULE_ARGS" ]; then
+	THRESHOLD="$MODULE_ARGS"
+fi
+
 # Create new RRD file
 function create() {
 	create_rrd DS:Load1:GAUGE:$UN:0:U \
@@ -11,6 +16,12 @@ function create() {
 # Update RRD file
 function update() {
 	run_on_server "cat /proc/loadavg | cut -d' ' -f 1-3 | tr '\ ' ':'"
+	LOAD="$(echo $DATA | cut -d: -f3)"
+	if expr "$LOAD" \> "$THRESHOLD" > /dev/null; then
+		STATUS="error (load avg $LOAD > $THRESHOLD)"
+	else
+		STATUS="ok"
+	fi
 }
 
 function plot() {

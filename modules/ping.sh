@@ -1,5 +1,10 @@
 #!/bin/sh
 
+THRESHOLD="500"
+if [ -n "$MODULE_ARGS" ]; then
+	THRESHOLD="$MODULE_ARGS"
+fi
+
 # Create new RRD file
 function create() {
 	create_rrd DS:Ping:GAUGE:$UN:0:U \
@@ -14,6 +19,12 @@ function update() {
 		/time=/ { split(\$8,spl,\"=\"); total+=spl[2] }
 		END { print total/$SAMPLES }
 	")
+	ROUND="$(echo $DATA | cut -d. -f1)"
+	if [ $ROUND -gt $THRESHOLD ]; then
+		STATUS="error ($DATA ms)"
+	else
+		STATUS="ok"
+	fi
 }
 
 function plot() {

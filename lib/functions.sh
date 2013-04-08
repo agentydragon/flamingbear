@@ -52,6 +52,9 @@ function load_module() {
 	SANITIZED_MODULE_COMMANDLINE=$(echo "$1" | tr : _)
 	MODULE="$(echo -n "$MODULE_COMMANDLINE" | cut -d: -f1)"
 	MODULE_ARGS="$(echo -n "$MODULE_COMMANDLINE" | cut -d: -f2-)"
+	if [ "$MODULE_ARGS" == "$MODULE" ]; then
+		MODULE_ARGS=""
+	fi
 	(echo "$MODULES" | grep -- "$MODULE" > /dev/null) || die "No such module known: $MODULE"
 	source "modules/${MODULE}.sh"
 	debug "Module $MODULE loaded."
@@ -130,8 +133,26 @@ function prepare_module_data() {
 function collect_module_data() {
 	find_rrd_path
 	[ -f "$RRD" ] || die "RRD file for module $MODULE on $MACHINE ($RRD) doesn't exist. Please, run prepare.sh first."
+
+	# Modules may change OKAY if they wish.
+	UNCHECKED="unchecked"
+	STATUS="$UNCHECKED"
+
 	update
+
 	rrdtool update "$RRD" "$(date +%s):$DATA"
+
+	STATUS_PATH="$STATUS_DIR/$MACHINE/${SANITIZED_MODULE_COMMANDLINE}.status"
+
+	if [ "$STATUS" != "$UNCHECKED" ]; then
+		debug "Reported module $MODULE status on $MACHINE: $STATUS"
+		mkdir -p "$STATUS_DIR/$MACHINE" || die "Failed to create machine status directory"
+		echo "$STATUS" > "$STATUS_PATH"
+	else
+		if [ -f "$STATUS_PATH" ]; then
+			echo "?" > "$STATUS_PATH"
+		fi
+	fi
 }
 
 function plot_module_data() {

@@ -1,2 +1,2 @@
 HOSTNAME="atrey.karlin.mff.cuni.cz"
-USE_MODULES="ping mem load users swap processes"
+USE_MODULES="ping:50 mem load users swap processes"

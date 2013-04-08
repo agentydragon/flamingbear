@@ -31,6 +31,7 @@ START=$(( $END - 24 * 60 * 60 ))
 : ${STYLE:="$FONTS --slope-mode"}
 
 : ${RRD_DIR:=rrd}
+: ${STATUS_DIR:=status}
 : ${LOCK_DIR:=locks}
 : ${GRAPH_DIR:=graphs}
 : ${LOG_FILE:=flamingbear.log}
