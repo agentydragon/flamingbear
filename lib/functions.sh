@@ -146,18 +146,8 @@ function ensure_lock_directory() {
 }
 
 function try_lock_machine() {
-	local LOCK_FILE="$LOCK_DIR/$MACHINE"
-
-	if [ -f "$LOCK_FILE" ]; then
-		local OWNER_PID=$(cat "$LOCK_FILE")
-
-		if [ $(ps -e -o pid | grep -e "^ *$OWNER_PID$" | wc -l) -gt 0 ]; then
-			debug "Lock owner $OWNER_PID is still running..."
-			return 1
-		fi
-	fi
-
-	flock -n "$LOCK_FILE" -c "echo $MAIN_PID > \"$LOCK_FILE\"" && return 0
+	local LOCK_DIR="$LOCK_DIR/$MACHINE"
+	mkdir "$LOCK_DIR" &>/dev/null && return 0
 
 	debug "Failed to lock $MACHINE."
 	return 1
@@ -166,14 +156,12 @@ function try_lock_machine() {
 function lock_machine() {
 	ensure_lock_directory
 	debug "Locking machine $MACHINE as $MAIN_PID"
-	local LOCK_FILE="$LOCK_DIR/$MACHINE"
 	local MAX_ATTEMPTS=10
 	local ATTEMPTS="$MAX_ATTEMPTS"
 
 	while [ "$ATTEMPTS" -gt 0 ]; do
 		if try_lock_machine; then
 			debug "$MACHINE lock obtained."
-			sleep 4
 			return
 		fi
 
@@ -187,9 +175,9 @@ function lock_machine() {
 
 function unlock_machine() {
 	debug "Unlocking machine $MACHINE"
-	local LOCK_FILE="$LOCK_DIR/$MACHINE"
-	[ -f "$LOCK_FILE" ] || die "Unlocking an unlocked machine ($MACHINE)"
-	rm "$LOCK_FILE" || die "Failed to unlock machine $MACHINE"
+	local LOCK_DIR="$LOCK_DIR/$MACHINE"
+	[ -d "$LOCK_DIR" ] || die "Unlocking an unlocked machine ($MACHINE)"
+	rmdir "$LOCK_DIR" || die "Failed to unlock machine $MACHINE"
 }
 
 function ensure_graph_directory() {
